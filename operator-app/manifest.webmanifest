@@ -1,0 +1,13 @@
+{
+  "name": "CHC Operator — Job Tracker",
+  "short_name": "CHC Jobs",
+  "description": "Assign and track farm machinery jobs for Customer Hiring Center operators.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f2",
+  "theme_color": "#2f7d32",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
