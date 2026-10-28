@@ -95,8 +95,7 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
-      console.error('Could not save data', e);
-      alert('Could not save data on this device. Storage may be full or blocked.');
+      console.error('Could not save data on this device. Storage may be full or blocked.', e);
     }
     listeners.forEach((fn) => fn(state));
   }
@@ -139,15 +138,21 @@
 
   function getSession() {
     try {
-      return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null') || memSession;
     } catch (e) {
-      return null;
+      return memSession;
     }
   }
 
+  // In-memory fallback for browsers that block storage (private mode, embedded views).
+  let memSession = null;
+
   function setSession(s) {
-    if (s) localStorage.setItem(SESSION_KEY, JSON.stringify(s));
-    else localStorage.removeItem(SESSION_KEY);
+    memSession = s;
+    try {
+      if (s) localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+      else localStorage.removeItem(SESSION_KEY);
+    } catch (e) { /* keep the in-memory session */ }
   }
 
   function actorName(session) {

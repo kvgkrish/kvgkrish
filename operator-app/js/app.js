@@ -145,24 +145,24 @@
   function navItems() {
     if (isAdmin()) {
       return [
-        ['#/dashboard', '📊', 'Dashboard'],
-        ['#/jobs', '📋', 'Jobs'],
-        ['#/machines', '🚜', 'Machines'],
-        ['#/operators', '👷', 'Operators'],
-        ['#/reports', '📈', 'Reports'],
-        ['#/settings', '⚙️', 'Settings'],
+        ['#dashboard', '📊', 'Dashboard'],
+        ['#jobs', '📋', 'Jobs'],
+        ['#machines', '🚜', 'Machines'],
+        ['#operators', '👷', 'Operators'],
+        ['#reports', '📈', 'Reports'],
+        ['#setup', '⚙️', 'Settings'],
       ];
     }
     return [
-      ['#/my', '📋', 'My jobs'],
-      ['#/history', '🕘', 'History'],
-      ['#/me', '👤', 'My stats'],
+      ['#my', '📋', 'My jobs'],
+      ['#history', '🕘', 'History'],
+      ['#me', '👤', 'My stats'],
     ];
   }
 
   function parseRoute() {
     const hash = location.hash.replace(/^#\/?/, '') || '';
-    const parts = hash.split('/').filter(Boolean);
+    const parts = hash.split(/[-/]/).filter(Boolean);
     return { name: parts[0] || '', id: parts[1] || '', sub: parts[2] || '' };
   }
 
@@ -194,7 +194,7 @@
         </div>
         <nav class="bottomnav" aria-label="Main">${nav}</nav>
       </div>`;
-    $('#logout').addEventListener('click', () => { S.setSession(null); go('#/'); });
+    $('#logout').addEventListener('click', () => { S.setSession(null); go('#'); });
   }
 
   function render() {
@@ -205,11 +205,11 @@
       return;
     }
     const route = parseRoute();
-    const adminRoutes = { dashboard: viewDashboard, jobs: viewJobs, job: viewJob, machines: viewMachines, machine: viewMachine, operators: viewOperators, operator: viewOperator, reports: viewReports, settings: viewSettings };
+    const adminRoutes = { dashboard: viewDashboard, jobs: viewJobs, job: viewJob, machines: viewMachines, machine: viewMachine, operators: viewOperators, operator: viewOperator, reports: viewReports, setup: viewSettings };
     const opRoutes = { my: viewMyJobs, history: viewMyHistory, me: viewMe, job: viewJob };
     const routes = sess.role === 'admin' ? adminRoutes : opRoutes;
     const fallback = sess.role === 'admin' ? 'dashboard' : 'my';
-    if (!routes[route.name]) { location.replace('#/' + fallback); return; }
+    if (!routes[route.name]) { location.replace('#' + fallback); return; }
     renderShell();
     routes[route.name](route);
     window.scrollTo(0, 0);
@@ -252,7 +252,7 @@
       const pin = new FormData(e.target).get('pin');
       if (pin !== String(S.getSettings().adminPin)) { toast('Wrong PIN'); return; }
       S.setSession({ role: 'admin' });
-      go('#/dashboard');
+      go('#dashboard');
     });
     const opForm = $('#op-login');
     if (opForm) opForm.addEventListener('submit', (e) => {
@@ -262,7 +262,7 @@
       if (!op) { toast('Select your name'); return; }
       if (op.pin && fd.get('pin') !== String(op.pin)) { toast('Wrong PIN'); return; }
       S.setSession({ role: 'operator', operatorId: op.id });
-      go('#/my');
+      go('#my');
     });
     const demoBtn = $('#load-demo');
     if (demoBtn) demoBtn.addEventListener('click', () => {
@@ -278,7 +278,7 @@
     const op = S.getOperator(j.operatorId);
     const m = S.getMachine(j.machineId);
     return `
-      <a class="item" href="#/job/${esc(j.id)}">
+      <a class="item" href="#job-${esc(j.id)}">
         <div class="row1">
           <span class="title">${esc(j.service)} · ${esc(j.customer.name)}</span>
           ${statusBadge(j.status)}
@@ -319,27 +319,27 @@
     const alerts = [];
     for (const m of S.listMachines()) {
       const left = S.serviceHoursLeft(m);
-      if (left <= 0) alerts.push(['bad', left < 0 ? `🔧 ${m.code} service overdue by ${qty(-left)} h` : `🔧 ${m.code} service due now`, `#/machine/${m.id}`]);
-      else if (left <= 20) alerts.push(['warn', `🔧 ${m.code} service due in ${qty(left)} h`, `#/machine/${m.id}`]);
+      if (left <= 0) alerts.push(['bad', left < 0 ? `🔧 ${m.code} service overdue by ${qty(-left)} h` : `🔧 ${m.code} service due now`, `#machine-${m.id}`]);
+      else if (left <= 20) alerts.push(['warn', `🔧 ${m.code} service due in ${qty(left)} h`, `#machine-${m.id}`]);
       if (m.insuranceExpiry) {
         const days = Math.round((new Date(m.insuranceExpiry) - new Date(today)) / 86400000);
-        if (days < 0) alerts.push(['bad', `🛡️ ${m.code} insurance expired ${fmtDate(m.insuranceExpiry)}`, `#/machine/${m.id}`]);
-        else if (days <= 30) alerts.push(['warn', `🛡️ ${m.code} insurance expires in ${days} day${days === 1 ? '' : 's'}`, `#/machine/${m.id}`]);
+        if (days < 0) alerts.push(['bad', `🛡️ ${m.code} insurance expired ${fmtDate(m.insuranceExpiry)}`, `#machine-${m.id}`]);
+        else if (days <= 30) alerts.push(['warn', `🛡️ ${m.code} insurance expires in ${days} day${days === 1 ? '' : 's'}`, `#machine-${m.id}`]);
       }
-      if (m.status === 'breakdown') alerts.push(['bad', `⚠️ ${m.code} is broken down`, `#/machine/${m.id}`]);
+      if (m.status === 'breakdown') alerts.push(['bad', `⚠️ ${m.code} is broken down`, `#machine-${m.id}`]);
       if (m.status === 'available') {
         const last = S.machineLastUsed(m.id);
         const upcoming = S.listJobs({ machineId: m.id, status: 'open' }).length;
         const idleDays = last ? Math.round((new Date(today) - new Date(last)) / 86400000) : null;
         if (!upcoming && (idleDays == null || idleDays >= 2)) {
-          alerts.push(['info', `💤 ${m.code} idle ${idleDays == null ? '— never used' : idleDays + ' days'} and nothing booked`, `#/machine/${m.id}`]);
+          alerts.push(['info', `💤 ${m.code} idle ${idleDays == null ? '— never used' : idleDays + ' days'} and nothing booked`, `#machine-${m.id}`]);
         }
       }
     }
     const overdueAssign = S.listJobs({ status: 'pending', to: S.todayStr(new Date(Date.now() + 86400000)) });
-    for (const j of overdueAssign) alerts.unshift(['bad', `📋 ${j.code} (${fmtDate(j.date)}) has no operator`, `#/job/${j.id}`]);
+    for (const j of overdueAssign) alerts.unshift(['bad', `📋 ${j.code} (${fmtDate(j.date)}) has no operator`, `#job-${j.id}`]);
     const unpaidOld = S.listJobs({ status: 'completed' }).filter((j) => S.jobBalance(j) > 0 && j.completedAt && (Date.now() - new Date(j.completedAt)) > 3 * 86400000);
-    for (const j of unpaidOld) alerts.push(['warn', `💰 ${j.code} ${j.customer.name}: ${money(S.jobBalance(j))} unpaid for 3+ days`, `#/job/${j.id}`]);
+    for (const j of unpaidOld) alerts.push(['warn', `💰 ${j.code} ${j.customer.name}: ${money(S.jobBalance(j))} unpaid for 3+ days`, `#job-${j.id}`]);
 
     const machines = S.listMachines();
     const util = machines.map((m) => ({ m, st: S.machineStats(m.id, from, to), live: S.machineLiveStatus(m) }));
@@ -347,7 +347,7 @@
     main.innerHTML = `
       <div class="page-head">
         <h1>Dashboard</h1>
-        <a class="btn primary" href="#/job/new">＋ New booking</a>
+        <a class="btn primary" href="#job-new">＋ New booking</a>
       </div>
       <div class="grid stats">
         <div class="stat"><div class="label">Today's jobs</div><div class="value">${todays.length}</div><div class="sub">${todays.filter((j) => j.status === 'completed').length} done · ${active.length} in field now</div></div>
@@ -376,7 +376,7 @@
               <thead><tr><th>Machine</th><th>Status</th><th class="num">Hours</th><th>Utilization</th></tr></thead>
               <tbody>${util.map(({ m, st, live }) => `
                 <tr>
-                  <td><a href="#/machine/${esc(m.id)}">${esc(m.code)}</a></td>
+                  <td><a href="#machine-${esc(m.id)}">${esc(m.code)}</a></td>
                   <td>${machineBadge(live)}</td>
                   <td class="num">${qty(st.hours)}</td>
                   <td>${utilBar(st.utilization)}</td>
@@ -410,7 +410,7 @@
         <h1>Jobs</h1>
         <div class="btn-row">
           <button class="btn" id="export-jobs">⬇ CSV</button>
-          <a class="btn primary" href="#/job/new">＋ New booking</a>
+          <a class="btn primary" href="#job-new">＋ New booking</a>
         </div>
       </div>
       <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-status="${k}" class="${jobFilters.status === k ? 'active' : ''}">${esc(l)}</button>`).join('')}</div>
@@ -476,12 +476,12 @@
     main.innerHTML = `
       <div class="page-head">
         <div>
-          <a href="${admin ? '#/jobs' : '#/my'}" class="small">← Back</a>
+          <a href="${admin ? '#jobs' : '#my'}" class="small">← Back</a>
           <h1>${esc(job.service)} · ${esc(job.customer.name)}</h1>
           <div class="btn-row" style="align-items:center">${statusBadge(job.status)} ${payBadge(job)} ${job.priority === 'urgent' ? '<span class="badge bad">Urgent</span>' : ''} <span class="muted small">${esc(job.code)}</span></div>
         </div>
         ${admin ? `<div class="btn-row">
-          <a class="btn" href="#/job/${esc(job.id)}/edit">✏️ Edit / assign</a>
+          <a class="btn" href="#job-${esc(job.id)}/edit">✏️ Edit / assign</a>
           ${!['completed', 'cancelled'].includes(st) ? '<button class="btn ghost" data-act="cancel">Cancel job</button>' : ''}
           ${st === 'cancelled' ? '<button class="btn ghost" data-act="reopen">Reopen</button><button class="btn danger" data-act="delete">Delete</button>' : ''}
         </div>` : ''}
@@ -585,7 +585,7 @@
           S.saveJob({ id: job.id, operatorId: '' }, sess);
           S.addNote(job.id, `Returned by operator: ${fd.get('note')}`, sess);
           toast('Sent back to coordinator');
-          go('#/my');
+          go('#my');
         });
         break;
       case 'payment':
@@ -618,7 +618,7 @@
       case 'reopen':
         S.setJobStatus(job.id, job.operatorId ? 'assigned' : 'pending', sess, 'Reopened'); rerender(); break;
       case 'delete':
-        if (await confirmDialog(`Delete ${job.code} permanently?`, 'Delete', true)) { S.deleteJob(job.id); toast('Deleted'); go('#/jobs'); }
+        if (await confirmDialog(`Delete ${job.code} permanently?`, 'Delete', true)) { S.deleteJob(job.id); toast('Deleted'); go('#jobs'); }
         break;
     }
   }
@@ -677,7 +677,7 @@
 
     main.innerHTML = `
       <div class="page-head">
-        <div><a href="${isNew ? '#/jobs' : '#/job/' + esc(j.id)}" class="small">← Back</a><h1>${isNew ? 'New booking' : 'Edit ' + esc(j.code)}</h1></div>
+        <div><a href="${isNew ? '#jobs' : '#job-' + esc(j.id)}" class="small">← Back</a><h1>${isNew ? 'New booking' : 'Edit ' + esc(j.code)}</h1></div>
       </div>
       <form id="job-form" class="card" novalidate>
         <h2>Customer</h2>
@@ -716,7 +716,7 @@
         </div>
 
         <div class="form-actions">
-          <a class="btn" href="${isNew ? '#/jobs' : '#/job/' + esc(j.id)}">Cancel</a>
+          <a class="btn" href="${isNew ? '#jobs' : '#job-' + esc(j.id)}">Cancel</a>
           <button class="btn primary">${isNew ? 'Create booking' : 'Save changes'}</button>
         </div>
       </form>`;
@@ -790,7 +790,7 @@
       else data.id = j.id;
       const saved = S.saveJob(data, session());
       toast(isNew ? `Booking ${saved.code} created` : 'Saved');
-      go('#/job/' + saved.id);
+      go('#job-' + saved.id);
     });
   }
 
@@ -808,7 +808,7 @@
         const st = S.machineStats(m.id, from, to);
         const op = live.job ? S.getOperator(live.job.operatorId) : null;
         return `
-        <a class="item" href="#/machine/${esc(m.id)}">
+        <a class="item" href="#machine-${esc(m.id)}">
           <div class="row1"><span class="title">${esc(m.code)} · ${esc(m.type)}</span>${machineBadge(live)}</div>
           <div class="meta">
             <span>${esc(m.model || '')}</span>
@@ -867,7 +867,7 @@
     const primary = S.getOperator(m.primaryOperatorId);
     main.innerHTML = `
       <div class="page-head">
-        <div><a href="#/machines" class="small">← Machines</a><h1>${esc(m.code)} · ${esc(m.type)}</h1>${machineBadge(live)}</div>
+        <div><a href="#machines" class="small">← Machines</a><h1>${esc(m.code)} · ${esc(m.type)}</h1>${machineBadge(live)}</div>
         <div class="btn-row">
           <button class="btn" id="log-service">🔧 Log service</button>
           <button class="btn" id="edit">✏️ Edit</button>
@@ -917,7 +917,7 @@
       if (!(await confirmDialog(`Remove ${m.code}? Machines with job history are marked retired instead of deleted.`, 'Remove', true))) return;
       const r = S.deleteMachine(m.id);
       toast(r === 'retired' ? 'Marked as retired' : 'Machine deleted');
-      go('#/machines');
+      go('#machines');
     });
   }
 
@@ -935,7 +935,7 @@
         const todayJobs = S.listJobs({ operatorId: o.id, date: today }).filter((j) => j.status !== 'cancelled');
         const active = S.listJobs({ operatorId: o.id }).find((j) => ['enroute', 'working'].includes(j.status));
         return `
-        <a class="item" href="#/operator/${esc(o.id)}">
+        <a class="item" href="#operator-${esc(o.id)}">
           <div class="row1"><span class="title">${esc(o.name)}</span>
             ${o.active === false ? '<span class="badge">Inactive</span>' : active ? statusBadge(active.status) : todayJobs.length ? `<span class="badge info">${todayJobs.length} job${todayJobs.length > 1 ? 's' : ''} today</span>` : '<span class="badge ok">Free today</span>'}
           </div>
@@ -984,7 +984,7 @@
     const recent = S.listJobs({ operatorId: o.id, status: 'completed' }).reverse().slice(0, 15);
     main.innerHTML = `
       <div class="page-head">
-        <div><a href="#/operators" class="small">← Operators</a><h1>${esc(o.name)}</h1>${o.active === false ? '<span class="badge">Inactive</span>' : ''}</div>
+        <div><a href="#operators" class="small">← Operators</a><h1>${esc(o.name)}</h1>${o.active === false ? '<span class="badge">Inactive</span>' : ''}</div>
         <div class="btn-row">
           ${o.phone ? `<a class="btn" href="tel:${esc(o.phone)}">📞 Call</a>` : ''}
           <button class="btn" id="edit">✏️ Edit</button>
@@ -1009,7 +1009,7 @@
       if (!(await confirmDialog(`Remove ${o.name}? Operators with job history are deactivated instead of deleted.`, 'Remove', true))) return;
       const r = S.deleteOperator(o.id);
       toast(r === 'deactivated' ? 'Operator deactivated' : 'Operator deleted');
-      go('#/operators');
+      go('#operators');
     });
   }
 
@@ -1079,12 +1079,12 @@
 
       <div class="card"><h2>Operators</h2><div class="table-wrap"><table>
         <thead><tr><th>Operator</th><th class="num">Assigned</th><th class="num">Done</th><th class="num">Hours</th><th class="num">Diesel L</th><th class="num">Revenue</th><th class="num">Collected</th><th class="num">Rating</th></tr></thead>
-        <tbody>${opRows.map(({ o, st }) => `<tr><td><a href="#/operator/${esc(o.id)}">${esc(o.name)}</a></td><td class="num">${st.assigned}</td><td class="num">${st.completed}</td><td class="num">${qty(st.hours)}</td><td class="num">${qty(st.fuel)}</td><td class="num">${money(st.revenue)}</td><td class="num">${money(st.collected)}</td><td class="num">${st.rating ? st.rating.toFixed(1) : '—'}</td></tr>`).join('') || '<tr><td colspan="8" class="muted">No operator activity</td></tr>'}</tbody>
+        <tbody>${opRows.map(({ o, st }) => `<tr><td><a href="#operator-${esc(o.id)}">${esc(o.name)}</a></td><td class="num">${st.assigned}</td><td class="num">${st.completed}</td><td class="num">${qty(st.hours)}</td><td class="num">${qty(st.fuel)}</td><td class="num">${money(st.revenue)}</td><td class="num">${money(st.collected)}</td><td class="num">${st.rating ? st.rating.toFixed(1) : '—'}</td></tr>`).join('') || '<tr><td colspan="8" class="muted">No operator activity</td></tr>'}</tbody>
       </table></div></div>
 
       <div class="card"><h2>Machines</h2><div class="table-wrap"><table>
         <thead><tr><th>Machine</th><th class="num">Jobs</th><th class="num">Hours</th><th>Utilization</th><th class="num">Diesel L</th><th class="num">L/h</th><th class="num">Revenue</th></tr></thead>
-        <tbody>${mRows.map(({ m, st }) => `<tr><td><a href="#/machine/${esc(m.id)}">${esc(m.code)}</a></td><td class="num">${st.jobs}</td><td class="num">${qty(st.hours)}</td><td style="min-width:140px">${utilBar(st.utilization)}</td><td class="num">${qty(st.fuel)}</td><td class="num">${st.hours ? qty(st.fuel / st.hours) : '—'}</td><td class="num">${money(st.revenue)}</td></tr>`).join('') || '<tr><td colspan="7" class="muted">No machines</td></tr>'}</tbody>
+        <tbody>${mRows.map(({ m, st }) => `<tr><td><a href="#machine-${esc(m.id)}">${esc(m.code)}</a></td><td class="num">${st.jobs}</td><td class="num">${qty(st.hours)}</td><td style="min-width:140px">${utilBar(st.utilization)}</td><td class="num">${qty(st.fuel)}</td><td class="num">${st.hours ? qty(st.fuel / st.hours) : '—'}</td><td class="num">${money(st.revenue)}</td></tr>`).join('') || '<tr><td colspan="7" class="muted">No machines</td></tr>'}</tbody>
       </table></div></div>
 
       <div class="card"><h2>By village</h2><div class="table-wrap"><table>
@@ -1200,11 +1200,11 @@
     });
     $('#demo').addEventListener('click', async () => {
       if (!(await confirmDialog('Replace all data with sample data?', 'Load sample', true))) return;
-      S.replaceState(Demo.buildDemo()); S.setSession({ role: 'admin' }); toast('Sample data loaded'); go('#/dashboard');
+      S.replaceState(Demo.buildDemo()); S.setSession({ role: 'admin' }); toast('Sample data loaded'); go('#dashboard');
     });
     $('#reset').addEventListener('click', async () => {
       if (!(await confirmDialog('Erase ALL operators, machines and jobs from this device? Download a backup first if you need it.', 'Erase everything', true))) return;
-      S.resetAll(); S.setSession(null); go('#/');
+      S.resetAll(); S.setSession(null); go('#');
     });
   }
 

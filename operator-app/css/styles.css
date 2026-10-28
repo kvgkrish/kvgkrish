@@ -22,7 +22,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #121611;
     --surface: #1b2119;
     --surface-2: #232a21;
@@ -41,12 +41,37 @@
     --violet: #a68ae6;
     --violet-soft: #2a2140;
     --shadow: none;
+    color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #121611;
+  --surface: #1b2119;
+  --surface-2: #232a21;
+  --text: #e6ece3;
+  --muted: #9aa894;
+  --border: #2f382c;
+  --primary: #5cb860;
+  --primary-ink: #0d140c;
+  --primary-soft: #1f3420;
+  --warn: #f0a640;
+  --warn-soft: #3a2b12;
+  --danger: #ef6b5e;
+  --danger-soft: #3d1d1a;
+  --info: #64a8e6;
+  --info-soft: #172b3d;
+  --violet: #a68ae6;
+  --violet-soft: #2a2140;
+  --shadow: none;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 
-html, body { margin: 0; padding: 0; }
+html, body { margin: 0; }
+
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--primary); }
 
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
@@ -69,9 +94,11 @@ h3 { font-size: 1rem; }
 .app { min-height: 100vh; display: flex; flex-direction: column; }
 
 .topbar {
-  position: sticky; top: 0; z-index: 10;
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
   display: flex; align-items: center; gap: .75rem;
-  padding: .7rem 1rem;
+  padding-block: .7rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: var(--primary); color: var(--primary-ink);
 }
 .topbar .brand { font-weight: 700; font-size: 1.05rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -82,7 +109,7 @@ h3 { font-size: 1rem; }
 
 .sidenav { display: none; }
 
-main { flex: 1; min-width: 0; padding: 1rem; padding-bottom: calc(var(--nav-h) + 1.5rem); max-width: 1100px; width: 100%; margin: 0 auto; }
+main { flex: 1; min-width: 0; padding: 1rem max(16px, env(safe-area-inset-right, 0px)) 1rem max(16px, env(safe-area-inset-left, 0px)); padding-bottom: calc(var(--nav-h) + 1.5rem); max-width: 1100px; width: 100%; margin: 0 auto; }
 
 .bottomnav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
